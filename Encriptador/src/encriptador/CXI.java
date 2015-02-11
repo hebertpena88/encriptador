@@ -5,6 +5,7 @@
  */
 
 package encriptador;
+
 import CryptoServerAPI.CryptoServerException;
 import CryptoServerAPI.CryptoServerUtil;
 import static CryptoServerAPI.CryptoServerUtil.concat;
@@ -226,6 +227,59 @@ public class CXI {
         return "";
      }
      
+      public String EncriptarVarios(String nombreLlave,String grupo, String rutaArchivoEntrada,String rutaSalida)
+     {
+        try {
+            KeyAttributes attr = new CryptoServerCXI.KeyAttributes();
+            if(!grupo.equals("") && !grupo.equals("null"))
+                attr.setGroup(grupo);
+            attr.setName(nombreLlave);
+            CryptoServerCXI.Key rsaKey = cxi.findKey(attr);
+            File file = new File(rutaArchivoEntrada);
+            byte[] b= new byte[(int) file.length()];
+            int mech = CryptoServerCXI.MECH_MODE_ENCRYPT | CryptoServerCXI.MECH_CHAIN_CBC;   
+            byte [] iv_in = null;
+            byte [] iv_out = new byte[16];  
+            byte[] crypto =new byte[0];
+            FileInputStream input= new FileInputStream(file);
+            
+            input.read(b);
+            
+            int rlen = b.length;
+            int ofs = 0;
+            int len = 16;
+
+
+            while (rlen > 0)
+            {        
+              if (rlen <= 16)
+              {
+                len = rlen;          
+                mech |= CryptoServerCXI.MECH_PAD_PKCS5;  // apply padding on last block
+              }
+
+              byte [] chunk = copyOf(b, ofs, len);        
+              
+              byte[][] salida=cxi.bulkCrypt(rsaKey, mech, null);
+
+              iv_in = iv_out;
+              rlen -= len;
+              ofs += len;
+            }
+            
+            FileOutputStream fos = new FileOutputStream(rutaSalida);
+            fos.write(crypto);
+            fos.close();
+
+        } 
+        catch (CryptoServerException ex) {
+            Logger.getLogger(CXI.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (IOException ex) {
+            Logger.getLogger(CXI.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        return "";
+     }
+     
      
      public String DesEncriptar(String nombreLlave,String grupo,String rutaEntrada,String rutaSalida)
      {
@@ -276,7 +330,7 @@ public class CXI {
             byte [] data = b;
             int mech =  CryptoServerCXI.MECH_MODE_ENCRYPT | CryptoServerCXI.MECH_CHAIN_CBC | CryptoServerCXI.MECH_PAD_PKCS5;
             byte [] crypto = cxi.crypt(rsaKey, mech, null, data, null);
-            CryptoServerUtil.xtrace("encrypted data: ", crypto); 
+            //CryptoServerUtil.xtrace("encrypted data: ", crypto); 
             
             FileOutputStream fos = new FileOutputStream(rutaSalida);
             fos.write(crypto);
